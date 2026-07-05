@@ -60,8 +60,16 @@ export default function ApiTester() {
   };
 
   const deleteCollection = (id) => {
+    const colToDelete = collections.find(c => c.id === id);
+    if (colToDelete) {
+      const requestIds = colToDelete.requests.map(r => r.id);
+      persistHistory(history.filter(h => !requestIds.includes(h.requestId)));
+    }
     persistCollections(collections.filter(c => c.id !== id));
-    if (activeCollectionId === id) setActiveCollectionId(null);
+    if (activeCollectionId === id) {
+      setActiveCollectionId(null);
+      setActiveRequestId(null);
+    }
   };
 
   const saveRequestData = () => {
@@ -114,6 +122,7 @@ export default function ApiTester() {
       return c;
     });
     persistCollections(newCols);
+    persistHistory(history.filter(h => h.requestId !== reqId));
     if (activeRequestId === reqId) {
       setActiveRequestId(null);
       setActiveCollectionId(null);
@@ -140,6 +149,14 @@ export default function ApiTester() {
     if (entry.response) {
       setResponse(entry.response);
       setResTab('body');
+    }
+  };
+
+  const clearHistory = () => {
+    if (activeRequestId) {
+      persistHistory(history.filter(h => h.requestId !== activeRequestId));
+    } else {
+      persistHistory(history.filter(h => h.requestId)); // Clears global scratchpad history
     }
   };
 
@@ -469,10 +486,17 @@ export default function ApiTester() {
       {/* RIGHT SIDEBAR: History */}
       <div className="w-full lg:w-72 flex-shrink-0 flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="px-4 py-3 border-b border-border/60 bg-secondary/30 flex flex-col gap-1">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
-            <History size={14} /> 
-            {activeRequestId ? 'Request History' : 'Global History'}
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
+              <History size={14} /> 
+              {activeRequestId ? 'Request History' : 'Global History'}
+            </span>
+            {relevantHistory.length > 0 && (
+              <button onClick={clearHistory} className="text-[10px] font-bold text-muted-foreground hover:text-red-400 transition-colors flex items-center gap-1">
+                <Trash2 size={12} /> Clear
+              </button>
+            )}
+          </div>
           <span className="text-[10px] text-muted-foreground">
             {activeRequestId ? 'Past executions of this request' : 'All recent executions'}
           </span>
