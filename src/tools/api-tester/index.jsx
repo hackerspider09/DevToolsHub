@@ -287,22 +287,22 @@ export default function ApiTester() {
               </div>
               <div className="flex flex-col">
                 {col.requests.map(req => (
-                  <button 
+                  <div 
                     key={req.id} 
                     onClick={() => loadRequest(col.id, req)}
-                    className={`flex flex-col text-left px-4 py-2 border-l-2 transition-colors ${activeRequestId === req.id ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-secondary/30'}`}
+                    className={`flex flex-col text-left px-4 py-2 border-l-2 cursor-pointer transition-colors ${activeRequestId === req.id ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-secondary/30'}`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between w-full">
                       <span className="text-xs font-bold text-foreground truncate">{req.name}</span>
                       <button onClick={(e) => { e.stopPropagation(); deleteRequest(col.id, req.id); }} className="text-muted-foreground hover:text-red-400 p-1">
                         <X size={10} />
                       </button>
                     </div>
-                    <span className="text-[10px] font-mono mt-0.5 truncate text-muted-foreground">
+                    <span className="text-[10px] font-mono mt-0.5 truncate text-muted-foreground w-full">
                       <span className={`font-bold mr-1 ${getMethodColor(req.method)}`}>{req.method}</span>
                       {req.url}
                     </span>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
