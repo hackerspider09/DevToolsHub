@@ -12,7 +12,8 @@ import {
   Cpu,
   ShieldCheck,
   Terminal,
-  Regex
+  Regex,
+  Globe
 } from 'lucide-react';
 
 export const tools = [
@@ -132,6 +133,19 @@ export const tools = [
     keywords: ['regex tester', 'regex builder', 'test regex', 'match regex'],
     visible: true,
     component: lazy(() => import('./regex-tester')),
+  },
+  {
+    id: 'api-tester',
+    slug: 'api-tester',
+    title: 'API Tester',
+    shortDescription: 'Send HTTP requests and view responses in real-time.',
+    longDescription: 'A complete HTTP client right in your browser. Configure methods, URLs, headers, and bodies, then send requests to instantly view response data. Includes persistent local storage history.',
+    icon: Globe,
+    category: 'Web',
+    tags: ['http', 'api', 'request', 'postman', 'rest'],
+    keywords: ['api tester', 'http client', 'send request', 'rest client'],
+    visible: true,
+    component: lazy(() => import('./api-tester')),
   }
 ];
 
