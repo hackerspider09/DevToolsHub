@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Copy, Check, Braces, Zap, CheckCircle2, XCircle, Info, RefreshCw } from 'lucide-react';
+import { Copy, Check, Braces, Zap, CheckCircle2, XCircle, Info, RefreshCw, ChevronDown } from 'lucide-react';
 
 const DEFAULT_JSON = JSON.stringify({
   project: "DevTools Hub",
@@ -98,25 +98,31 @@ export default function JsonFormatter() {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border">
             <span>Mode:</span>
-            <select 
-              value={isMinified ? 'minify' : 'beautify'} 
-              onChange={(e) => setIsMinified(e.target.value === 'minify')}
-              className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none"
-            >
-              <option value="beautify" className="bg-card text-foreground">Beautify</option>
-              <option value="minify" className="bg-card text-foreground">Minify</option>
-            </select>
+            <div className="relative flex items-center">
+              <select 
+                value={isMinified ? 'minify' : 'beautify'} 
+                onChange={(e) => setIsMinified(e.target.value === 'minify')}
+                className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none pr-4"
+              >
+                <option value="beautify" className="bg-card text-foreground">Beautify</option>
+                <option value="minify" className="bg-card text-foreground">Minify</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-0 pointer-events-none text-primary/70" />
+            </div>
           </div>
           <div className={`flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border transition-opacity ${isMinified ? 'opacity-50 pointer-events-none' : ''}`}>
             <span>Indent:</span>
-            <select 
-              value={tabSize} 
-              onChange={(e) => setTabSize(Number(e.target.value))}
-              className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none"
-            >
-              <option value={2} className="bg-card text-foreground">2 spaces</option>
-              <option value={4} className="bg-card text-foreground">4 spaces</option>
-            </select>
+            <div className="relative flex items-center">
+              <select 
+                value={tabSize} 
+                onChange={(e) => setTabSize(Number(e.target.value))}
+                className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none pr-4"
+              >
+                <option value={2} className="bg-card text-foreground">2 spaces</option>
+                <option value={4} className="bg-card text-foreground">4 spaces</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-0 pointer-events-none text-primary/70" />
+            </div>
           </div>
           <button onClick={reset} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5">
             <RefreshCw size={12} /> Example

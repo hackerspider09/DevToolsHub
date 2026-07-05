@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import jsYaml from 'js-yaml';
-import { Copy, Check, ArrowRightLeft, AlertCircle, RefreshCw } from 'lucide-react';
+import { Copy, Check, ArrowRightLeft, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react';
 
 const DEFAULT_YAML = `# Example YAML
 name: John Doe
@@ -116,26 +116,32 @@ export default function YamlJsonConverter() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border">
             <span>Mode:</span>
-            <select 
-              value={docMode} 
-              onChange={handleDocModeChange}
-              className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none"
-            >
-              <option value="single" className="bg-card text-foreground">Single Doc</option>
-              <option value="multiple" className="bg-card text-foreground">Multi Doc</option>
-            </select>
+            <div className="relative flex items-center">
+              <select 
+                value={docMode} 
+                onChange={handleDocModeChange}
+                className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none pr-4"
+              >
+                <option value="single" className="bg-card text-foreground">Single Doc</option>
+                <option value="multiple" className="bg-card text-foreground">Multi Doc</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-0 pointer-events-none text-primary/70" />
+            </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border">
             <span>Indent:</span>
-            <select
-              value={indent}
-              onChange={handleIndentChange}
-              className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none"
-            >
-              <option value={2} className="bg-card text-foreground">2 spaces</option>
-              <option value={4} className="bg-card text-foreground">4 spaces</option>
-              <option value={8} className="bg-card text-foreground">8 spaces</option>
-            </select>
+            <div className="relative flex items-center">
+              <select
+                value={indent}
+                onChange={handleIndentChange}
+                className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none pr-4"
+              >
+                <option value={2} className="bg-card text-foreground">2 spaces</option>
+                <option value={4} className="bg-card text-foreground">4 spaces</option>
+                <option value={8} className="bg-card text-foreground">8 spaces</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-0 pointer-events-none text-primary/70" />
+            </div>
           </div>
           <button
             onClick={reset}
