@@ -35,14 +35,21 @@ export default function YamlJsonConverter() {
   const { copied, copy } = useCopy();
 
   const [indent, setIndent] = useState(2);
+  const [docMode, setDocMode] = useState('single');
 
-  const onYamlChange = (val, currentIndent = indent) => {
+  const onYamlChange = (val, currentIndent = indent, currentMode = docMode) => {
     lastEdited.current = 'yaml';
     setYaml(val);
     try {
-      const obj = jsYaml.load(val);
-      if (obj === undefined || obj === null) { setJson(''); setError(''); return; }
-      setJson(JSON.stringify(obj, null, currentIndent));
+      if (currentMode === 'multiple') {
+        const obj = jsYaml.loadAll(val);
+        if (obj === undefined || obj === null || obj.length === 0) { setJson(''); setError(''); return; }
+        setJson(JSON.stringify(obj, null, currentIndent));
+      } else {
+        const obj = jsYaml.load(val);
+        if (obj === undefined || obj === null) { setJson(''); setError(''); return; }
+        setJson(JSON.stringify(obj, null, currentIndent));
+      }
       setError('');
     } catch (e) {
       setError(e.message);
@@ -50,12 +57,16 @@ export default function YamlJsonConverter() {
     }
   };
 
-  const onJsonChange = (val, currentIndent = indent) => {
+  const onJsonChange = (val, currentIndent = indent, currentMode = docMode) => {
     lastEdited.current = 'json';
     setJson(val);
     try {
       const obj = JSON.parse(val);
-      setYaml(jsYaml.dump(obj, { indent: currentIndent }));
+      if (currentMode === 'multiple' && Array.isArray(obj)) {
+        setYaml(obj.map(doc => jsYaml.dump(doc, { indent: currentIndent })).join('---\n'));
+      } else {
+        setYaml(jsYaml.dump(obj, { indent: currentIndent }));
+      }
       setError('');
     } catch (e) {
       setError(e.message);
@@ -68,26 +79,29 @@ export default function YamlJsonConverter() {
     setIndent(newIndent);
     try {
       if (lastEdited.current === 'yaml' && yaml) {
-        const obj = jsYaml.load(yaml);
-        if (obj !== undefined && obj !== null) {
-          setJson(JSON.stringify(obj, null, newIndent));
-          setYaml(jsYaml.dump(obj, { indent: newIndent }));
-        }
+        onYamlChange(yaml, newIndent, docMode);
       } else if (lastEdited.current === 'json' && json) {
-        const obj = JSON.parse(json);
-        if (obj !== undefined && obj !== null) {
-          setYaml(jsYaml.dump(obj, { indent: newIndent }));
-          setJson(JSON.stringify(obj, null, newIndent));
-        }
+        onJsonChange(json, newIndent, docMode);
       }
-    } catch (e) {
-      // ignore parse errors if user tries to indent invalid content
-    }
+    } catch (e) {}
+  };
+
+  const handleDocModeChange = (e) => {
+    const newMode = e.target.value;
+    setDocMode(newMode);
+    try {
+      if (lastEdited.current === 'yaml' && yaml) {
+        onYamlChange(yaml, indent, newMode);
+      } else if (lastEdited.current === 'json' && json) {
+        onJsonChange(json, indent, newMode);
+      }
+    } catch (e) {}
   };
 
   const reset = () => {
     setYaml(DEFAULT_YAML);
-    onYamlChange(DEFAULT_YAML, indent);
+    setDocMode('single');
+    onYamlChange(DEFAULT_YAML, indent, 'single');
     setError('');
   };
 
@@ -100,6 +114,17 @@ export default function YamlJsonConverter() {
           <span>Edit either side — the other updates instantly</span>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border">
+            <span>Mode:</span>
+            <select 
+              value={docMode} 
+              onChange={handleDocModeChange}
+              className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none"
+            >
+              <option value="single" className="bg-card text-foreground">Single Doc</option>
+              <option value="multiple" className="bg-card text-foreground">Multi Doc</option>
+            </select>
+          </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border">
             <span>Indent:</span>
             <select

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import jsYaml from 'js-yaml';
-import { CheckCircle2, XCircle, AlertCircle, RefreshCw, Copy, Check, Info } from 'lucide-react';
+import { CheckCircle2, XCircle, RefreshCw, Copy, Check, Info } from 'lucide-react';
 
 const DEFAULT_YAML = `# Kubernetes Deployment manifest
 apiVersion: apps/v1
@@ -45,54 +45,94 @@ function countKeys(obj, depth = 0) {
 
 export default function YamlValidator() {
   const [yaml, setYaml] = useState(DEFAULT_YAML);
-  const [copied, setCopied] = useState(false);
+  const [copiedInput, setCopiedInput] = useState(false);
+  const [copiedOutput, setCopiedOutput] = useState(false);
   const [indent, setIndent] = useState(2);
+  const [docMode, setDocMode] = useState('single');
 
   const result = useMemo(() => {
-    if (!yaml.trim()) return { status: 'empty' };
+    if (!yaml.trim()) return { status: 'empty', output: '' };
     try {
-      const parsed = jsYaml.load(yaml);
-      if (parsed === null || parsed === undefined) return { status: 'empty' };
-      const isObject = typeof parsed === 'object';
-      const { keys, maxDepth } = isObject ? countKeys(parsed) : { keys: 0, maxDepth: 0 };
-      const lines = yaml.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).length;
-      return {
-        status: 'valid',
-        type: Array.isArray(parsed) ? 'Array' : typeof parsed === 'object' ? 'Object' : typeof parsed,
-        topLevelKeys: isObject && !Array.isArray(parsed) ? Object.keys(parsed).length : (Array.isArray(parsed) ? parsed.length : 1),
-        totalKeys: keys,
-        maxDepth,
-        lines,
-      };
+      if (docMode === 'multiple') {
+        const parsedAll = jsYaml.loadAll(yaml);
+        if (!parsedAll || parsedAll.length === 0) return { status: 'empty', output: '' };
+        
+        let totalKeys = 0;
+        let overallMaxDepth = 0;
+        const types = new Set();
+        
+        parsedAll.forEach(doc => {
+           if (doc !== null && doc !== undefined) {
+             const isObj = typeof doc === 'object';
+             if (isObj) {
+               const { keys, maxDepth } = countKeys(doc);
+               totalKeys += keys;
+               if (maxDepth > overallMaxDepth) overallMaxDepth = maxDepth;
+             }
+             types.add(Array.isArray(doc) ? 'Array' : typeof doc === 'object' ? 'Object' : typeof doc);
+           }
+        });
+
+        const lines = yaml.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).length;
+        
+        const output = parsedAll.map(doc => jsYaml.dump(doc, { indent })).join('---\n');
+        
+        return {
+          status: 'valid',
+          type: Array.from(types).join(', ') || 'Mixed',
+          topLevelKeys: parsedAll.length,
+          totalKeys,
+          maxDepth: overallMaxDepth,
+          lines,
+          output
+        };
+      } else {
+        const parsed = jsYaml.load(yaml);
+        if (parsed === null || parsed === undefined) return { status: 'empty', output: '' };
+        const isObject = typeof parsed === 'object';
+        const { keys, maxDepth } = isObject ? countKeys(parsed) : { keys: 0, maxDepth: 0 };
+        const lines = yaml.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).length;
+        
+        const output = jsYaml.dump(parsed, { indent });
+        
+        return {
+          status: 'valid',
+          type: Array.isArray(parsed) ? 'Array' : typeof parsed === 'object' ? 'Object' : typeof parsed,
+          topLevelKeys: isObject && !Array.isArray(parsed) ? Object.keys(parsed).length : (Array.isArray(parsed) ? parsed.length : 1),
+          totalKeys: keys,
+          maxDepth,
+          lines,
+          output
+        };
+      }
     } catch (e) {
       const match = e.message.match(/line (\d+)/i);
       const lineNum = match ? parseInt(match[1]) : null;
-      return { status: 'error', message: e.message, line: lineNum };
+      return { status: 'error', message: e.message, line: lineNum, output: '' };
     }
-  }, [yaml]);
+  }, [yaml, indent, docMode]);
 
   const handleIndentChange = (e) => {
     const spaces = parseInt(e.target.value, 10);
     setIndent(spaces);
-    if (yaml && result.status === 'valid') {
-      try {
-        const obj = jsYaml.load(yaml);
-        if (obj !== undefined && obj !== null) {
-          setYaml(jsYaml.dump(obj, { indent: spaces }));
-        }
-      } catch (e) {}
-    }
   };
 
-  const copy = () => {
+  const copyInputText = () => {
     navigator.clipboard.writeText(yaml);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedInput(true);
+    setTimeout(() => setCopiedInput(false), 2000);
+  };
+
+  const copyOutputText = () => {
+    navigator.clipboard.writeText(result.status === 'valid' ? result.output : yaml);
+    setCopiedOutput(true);
+    setTimeout(() => setCopiedOutput(false), 2000);
   };
 
   const reset = () => {
     setYaml(DEFAULT_YAML);
     setIndent(2);
+    setDocMode('single');
   };
 
   const highlightedLines = yaml.split('\n').map((line, i) => {
@@ -101,7 +141,7 @@ export default function YamlValidator() {
   });
 
   return (
-    <div className="flex flex-col gap-5 p-5">
+    <div className="flex flex-col gap-6 p-6">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -121,6 +161,17 @@ export default function YamlValidator() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border">
+            <span>Mode:</span>
+            <select 
+              value={docMode} 
+              onChange={(e) => setDocMode(e.target.value)}
+              className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none"
+            >
+              <option value="single" className="bg-card text-foreground">Single Doc</option>
+              <option value="multiple" className="bg-card text-foreground">Multi Doc</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border">
             <span>Indent:</span>
             <select 
               value={indent} 
@@ -132,25 +183,28 @@ export default function YamlValidator() {
               <option value={8} className="bg-card text-foreground">8 spaces</option>
             </select>
           </div>
-          <button onClick={copy} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg border border-border hover:border-primary/40">
-            {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
           <button onClick={reset} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5">
             <RefreshCw size={12} /> Example
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
         {/* Editor */}
-        <div className="xl:col-span-2 rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/60 bg-secondary/30">
+        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col h-full">
+          <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/60 bg-secondary/30 shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">YAML Input</span>
+            <button 
+              onClick={copyInputText}
+              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-xs font-medium"
+            >
+              {copiedInput ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              {copiedInput ? 'Copied' : 'Copy'}
+            </button>
           </div>
-          <div className="flex overflow-auto max-h-[500px]">
+          <div className="flex flex-1 overflow-auto relative">
             {/* Line numbers */}
-            <div className="flex flex-col px-3 py-3 bg-secondary/20 text-right select-none min-w-[3rem] border-r border-border/40">
+            <div className="flex flex-col px-3 py-3 bg-secondary/20 text-right select-none min-w-[3rem] border-r border-border/40 h-fit min-h-full">
               {highlightedLines.map(({ num, isErrorLine }) => (
                 <span
                   key={num}
@@ -166,29 +220,58 @@ export default function YamlValidator() {
               onChange={(e) => setYaml(e.target.value)}
               spellCheck={false}
               placeholder="Paste your YAML here..."
-              style={{ minHeight: '400px', height: `${Math.max(400, highlightedLines.length * 24 + 48)}px` }}
-              className="flex-1 w-full resize-none bg-transparent px-4 py-3 outline-none font-mono text-sm leading-6 text-amber-300 placeholder:text-muted-foreground/40 overflow-hidden"
+              style={{ minHeight: '100%', height: `${Math.max(100, highlightedLines.length * 24 + 48)}px` }}
+              className="flex-1 w-full resize-none bg-transparent px-4 py-3 outline-none font-mono text-sm leading-6 text-amber-300 placeholder:text-muted-foreground/40 overflow-hidden whitespace-pre"
             />
           </div>
         </div>
 
-        {/* Stats + Error */}
-        <div className="flex flex-col gap-4">
+        {/* Output */}
+        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col h-full">
+          <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/60 bg-secondary/30 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Formatted Output</span>
+            <button 
+              onClick={copyOutputText}
+              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-xs font-medium"
+            >
+              {copiedOutput ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              {copiedOutput ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <div className="flex flex-1 overflow-auto p-4 bg-card/50">
+            {result.status === 'error' ? (
+               <div className="text-red-400 font-mono text-sm">Fix errors to see formatted YAML</div>
+            ) : result.status === 'empty' ? (
+               <div className="text-muted-foreground text-sm">Awaiting input...</div>
+            ) : (
+               <textarea 
+                 readOnly
+                 value={result.output}
+                 className="flex-1 w-full h-full resize-none bg-transparent outline-none font-mono text-sm leading-6 text-foreground whitespace-pre overflow-auto"
+               />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Stats + Error Below */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
           {/* Status card */}
-          <div className={`rounded-xl border p-4 ${
+          <div className={`rounded-xl border p-5 h-full ${
             result.status === 'valid' ? 'border-green-500/25 bg-green-500/5' :
             result.status === 'error' ? 'border-red-500/25 bg-red-500/5' :
             'border-border bg-card'
           }`}>
             {result.status === 'valid' && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2 text-green-400 font-semibold text-sm">
                   <CheckCircle2 size={18} /> Syntax Valid
                 </div>
-                <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                   {[
                     { label: 'Root Type', val: result.type },
-                    { label: 'Top Level Keys', val: result.topLevelKeys },
+                    { label: docMode === 'multiple' ? 'Documents' : 'Top Level Keys', val: result.topLevelKeys },
                     { label: 'Total Keys', val: result.totalKeys },
                     { label: 'Max Depth', val: result.maxDepth },
                     { label: 'Content Lines', val: result.lines },
@@ -207,7 +290,7 @@ export default function YamlValidator() {
                   <XCircle size={18} /> Parse Error
                 </div>
                 {result.line && (
-                  <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+                  <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 w-fit">
                     Line {result.line}
                   </div>
                 )}
@@ -221,9 +304,11 @@ export default function YamlValidator() {
               </div>
             )}
           </div>
+        </div>
 
+        <div className="lg:col-span-1">
           {/* Tips */}
-          <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+          <div className="rounded-xl border border-border bg-card p-5 h-full space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Common Issues</p>
             {[
               'Use spaces, never tabs for indentation',

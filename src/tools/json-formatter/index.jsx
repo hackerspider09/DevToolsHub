@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Copy, Check, Braces, Zap } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Copy, Check, Braces, Zap, CheckCircle2, XCircle, Info, RefreshCw } from 'lucide-react';
 
 const DEFAULT_JSON = JSON.stringify({
   project: "DevTools Hub",
@@ -12,135 +12,166 @@ const DEFAULT_JSON = JSON.stringify({
   }
 }, null, 2);
 
+function countKeys(obj, depth = 0) {
+  if (typeof obj !== 'object' || obj === null) return { keys: 0, maxDepth: depth };
+  let keys = 0;
+  let maxDepth = depth;
+  for (const v of Object.values(obj)) {
+    keys++;
+    const nested = countKeys(v, depth + 1);
+    keys += nested.keys;
+    if (nested.maxDepth > maxDepth) maxDepth = nested.maxDepth;
+  }
+  return { keys, maxDepth };
+}
+
 export default function JsonFormatter() {
   const [input, setInput] = useState(DEFAULT_JSON);
-  const [output, setOutput] = useState('');
-  const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copiedInput, setCopiedInput] = useState(false);
+  const [copiedOutput, setCopiedOutput] = useState(false);
   const [tabSize, setTabSize] = useState(2); 
   const [isMinified, setIsMinified] = useState(false);
 
-  useEffect(() => {
-    if (!input.trim()) {
-      setOutput('');
-      setError('');
-      return;
-    }
+  const result = useMemo(() => {
+    if (!input.trim()) return { status: 'empty', output: '' };
     try {
       const parsed = JSON.parse(input);
-      if (isMinified) {
-        setOutput(JSON.stringify(parsed));
-      } else {
-        setOutput(JSON.stringify(parsed, null, tabSize));
-      }
-      setError('');
+      if (parsed === null || parsed === undefined) return { status: 'empty', output: '' };
+      
+      const isObject = typeof parsed === 'object';
+      const { keys, maxDepth } = isObject ? countKeys(parsed) : { keys: 0, maxDepth: 0 };
+      const lines = input.split('\n').filter(l => l.trim()).length;
+      
+      const output = isMinified ? JSON.stringify(parsed) : JSON.stringify(parsed, null, tabSize);
+      
+      return {
+        status: 'valid',
+        type: Array.isArray(parsed) ? 'Array' : typeof parsed === 'object' ? 'Object' : typeof parsed,
+        topLevelKeys: isObject && !Array.isArray(parsed) ? Object.keys(parsed).length : (Array.isArray(parsed) ? parsed.length : 1),
+        totalKeys: keys,
+        maxDepth,
+        lines,
+        output
+      };
     } catch (err) {
-      setError(err.message);
+      return { status: 'error', message: err.message, output: '' };
     }
   }, [input, tabSize, isMinified]);
 
-  const copy = () => {
-    navigator.clipboard.writeText(output || input);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyInputText = () => {
+    navigator.clipboard.writeText(input);
+    setCopiedInput(true);
+    setTimeout(() => setCopiedInput(false), 2000);
+  };
+
+  const copyOutputText = () => {
+    navigator.clipboard.writeText(result.status === 'valid' ? result.output : input);
+    setCopiedOutput(true);
+    setTimeout(() => setCopiedOutput(false), 2000);
+  };
+
+  const reset = () => {
+    setInput(DEFAULT_JSON);
+    setIsMinified(false);
+    setTabSize(2);
   };
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-wrap items-center gap-6">
-        {/* Action Group */}
-        <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Actions</span>
-          <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-border/50">
-            <button
-              onClick={() => setIsMinified(false)}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                !isMinified 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
-                  : 'hover:bg-secondary text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Beautify
-            </button>
-            <button
-              onClick={() => setIsMinified(true)}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                isMinified 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
-                  : 'hover:bg-secondary text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Minify
-            </button>
-          </div>
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {result.status === 'valid' && (
+            <span className="flex items-center gap-1.5 text-sm font-medium text-green-400">
+              <CheckCircle2 size={16} /> Valid JSON
+            </span>
+          )}
+          {result.status === 'error' && (
+            <span className="flex items-center gap-1.5 text-sm font-medium text-red-400">
+              <XCircle size={16} /> Invalid JSON
+            </span>
+          )}
+          {result.status === 'empty' && (
+            <span className="text-sm text-muted-foreground">Paste JSON to validate</span>
+          )}
         </div>
-
-        {/* Indentation Group */}
-        <div className={`flex flex-col gap-2 transition-opacity duration-300 ${isMinified ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Spaces</span>
-          <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-border/50">
-            <button
-              onClick={() => setTabSize(2)}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                tabSize === 2 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
-                  : 'hover:bg-secondary text-muted-foreground hover:text-foreground'
-              }`}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border">
+            <span>Mode:</span>
+            <select 
+              value={isMinified ? 'minify' : 'beautify'} 
+              onChange={(e) => setIsMinified(e.target.value === 'minify')}
+              className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none"
             >
-              2
-            </button>
-            <button
-              onClick={() => setTabSize(4)}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                tabSize === 4 
-                  ? 'bg-primary text-primary-foreground shadow-sm' 
-                  : 'hover:bg-secondary text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              4
-            </button>
+              <option value="beautify" className="bg-card text-foreground">Beautify</option>
+              <option value="minify" className="bg-card text-foreground">Minify</option>
+            </select>
           </div>
+          <div className={`flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border transition-opacity ${isMinified ? 'opacity-50 pointer-events-none' : ''}`}>
+            <span>Indent:</span>
+            <select 
+              value={tabSize} 
+              onChange={(e) => setTabSize(Number(e.target.value))}
+              className="bg-transparent text-primary font-mono outline-none cursor-pointer appearance-none"
+            >
+              <option value={2} className="bg-card text-foreground">2 spaces</option>
+              <option value={4} className="bg-card text-foreground">4 spaces</option>
+            </select>
+          </div>
+          <button onClick={reset} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5">
+            <RefreshCw size={12} /> Example
+          </button>
         </div>
       </div>
 
+      {/* Editor Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
         {/* Input */}
-        <div className="flex flex-col space-y-3 h-full">
-          <div className="flex items-center justify-between">
+        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col h-full">
+          <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/60 bg-secondary/30 shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Input JSON</span>
+            <button 
+              onClick={copyInputText}
+              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-xs font-medium"
+            >
+              {copiedInput ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              {copiedInput ? 'Copied' : 'Copy'}
+            </button>
           </div>
-          <textarea 
-            className={`flex-1 w-full p-5 rounded-xl bg-background border outline-none font-mono text-sm shadow-sm transition-all resize-none leading-relaxed h-full ${error ? 'border-red-500/30 focus:ring-red-500/10' : 'border-border focus:ring-primary/50'}`}
-            placeholder="Paste your JSON here..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            spellCheck="false"
-          />
+          <div className="flex flex-1 overflow-auto relative">
+            <textarea 
+              className={`flex-1 w-full p-4 bg-transparent outline-none font-mono text-sm shadow-sm transition-all resize-none leading-relaxed h-full ${result.status === 'error' ? 'bg-red-500/5' : ''}`}
+              placeholder="Paste your JSON here..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              spellCheck="false"
+            />
+          </div>
         </div>
 
         {/* Output */}
-        <div className="flex flex-col space-y-3 h-full">
-          <div className="flex items-center justify-between">
+        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col h-full">
+          <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/60 bg-secondary/30 shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Formatted Result</span>
             <button 
-              onClick={copy}
+              onClick={copyOutputText}
               className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-xs font-medium"
             >
-              {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-              {copied ? 'Copied' : 'Copy'}
+              {copiedOutput ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              {copiedOutput ? 'Copied' : 'Copy'}
             </button>
           </div>
-          <div className={`flex-1 w-full rounded-xl border bg-card/50 overflow-hidden relative flex flex-col h-full ${error ? 'border-red-500/20' : 'border-border'}`}>
-             {error ? (
-               <div className="absolute inset-0 p-5 bg-red-500/5 overflow-auto">
+          <div className={`flex flex-1 overflow-auto p-4 bg-card/50 relative ${result.status === 'error' ? 'bg-red-500/5' : ''}`}>
+             {result.status === 'error' ? (
+               <div className="absolute inset-0 p-4 overflow-auto">
                  <p className="text-xs font-bold text-red-500 uppercase mb-2">Syntax Error</p>
-                 <code className="text-sm text-red-400 block whitespace-pre-wrap font-mono leading-relaxed">{error}</code>
+                 <code className="text-sm text-red-400 block whitespace-pre-wrap font-mono leading-relaxed">{result.message}</code>
                </div>
              ) : (
                <textarea 
                  readOnly
-                 className="flex-1 w-full h-full p-5 bg-transparent outline-none font-mono text-sm text-foreground resize-none leading-relaxed"
-                 value={output}
+                 className="flex-1 w-full h-full bg-transparent outline-none font-mono text-sm text-foreground resize-none leading-relaxed overflow-auto"
+                 value={result.output}
                  placeholder="Result will appear here..."
                />
              )}
@@ -148,12 +179,69 @@ export default function JsonFormatter() {
         </div>
       </div>
 
-
-      <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-3">
-        <Zap className="text-primary h-4 w-4 shrink-0" />
-        <p className="text-xs text-muted-foreground">
-          <span className="font-bold text-foreground">Real-time Validation:</span> Catch syntax errors instantly as you type.
-        </p>
+      {/* Stats + Error Below */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          {/* Status card */}
+          <div className={`rounded-xl border p-5 h-full ${
+            result.status === 'valid' ? 'border-green-500/25 bg-green-500/5' :
+            result.status === 'error' ? 'border-red-500/25 bg-red-500/5' :
+            'border-border bg-card'
+          }`}>
+            {result.status === 'valid' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-green-400 font-semibold text-sm">
+                  <CheckCircle2 size={18} /> Syntax Valid
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                  {[
+                    { label: 'Root Type', val: result.type },
+                    { label: 'Top Level Keys', val: result.topLevelKeys },
+                    { label: 'Total Keys', val: result.totalKeys },
+                    { label: 'Max Depth', val: result.maxDepth },
+                    { label: 'Content Lines', val: result.lines },
+                  ].map(({ label, val }) => (
+                    <div key={label} className="bg-background/60 rounded-lg p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+                      <p className="text-sm font-mono font-semibold text-foreground mt-0.5">{val}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {result.status === 'error' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-red-400 font-semibold text-sm">
+                  <XCircle size={18} /> Parse Error
+                </div>
+                <p className="text-xs font-mono text-red-400 leading-relaxed break-words">{result.message}</p>
+              </div>
+            )}
+            {result.status === 'empty' && (
+              <div className="flex items-start gap-2 text-muted-foreground text-sm">
+                <Info size={16} className="shrink-0 mt-0.5" />
+                Paste or type JSON to see validation results.
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="lg:col-span-1">
+          {/* Tips */}
+          <div className="rounded-xl border border-border bg-card p-5 h-full space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Common Issues</p>
+            {[
+              'Trailing commas are not allowed in JSON',
+              'All keys must be double-quoted',
+              'Single quotes are not allowed',
+              'Values must be valid JSON types'
+            ].map((tip) => (
+              <p key={tip} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <span className="text-primary mt-0.5">›</span> {tip}
+              </p>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
