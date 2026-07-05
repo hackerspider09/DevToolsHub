@@ -11,7 +11,8 @@ import {
   FileCode2,
   Cpu,
   ShieldCheck,
-  Terminal
+  Terminal,
+  Regex
 } from 'lucide-react';
 
 export const tools = [
@@ -118,6 +119,19 @@ export const tools = [
     keywords: ['curl builder', 'generate curl', 'http request builder'],
     visible: true,
     component: lazy(() => import('./curl-builder')),
+  },
+  {
+    id: 'regex-tester',
+    slug: 'regex-tester',
+    title: 'Regex Tester',
+    shortDescription: 'Write, test, and debug regular expressions in real-time.',
+    longDescription: 'A live regular expression testing environment. Input your pattern and flags, evaluate it against test strings, and immediately see matched results. Includes built-in cheat sheets for quick reference.',
+    icon: Regex,
+    category: 'Text Tools',
+    tags: ['regex', 'regular expression', 'test', 'match', 'devops'],
+    keywords: ['regex tester', 'regex builder', 'test regex', 'match regex'],
+    visible: true,
+    component: lazy(() => import('./regex-tester')),
   }
 ];
 
