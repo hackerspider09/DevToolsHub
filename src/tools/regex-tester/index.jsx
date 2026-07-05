@@ -191,7 +191,7 @@ export default function RegexTester() {
            <h3 className="text-sm font-bold text-foreground">Regex Cheat Sheet</h3>
          </div>
          
-         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-6">
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-8 gap-y-6">
             <div>
               <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Character Classes</h4>
               <ul className="space-y-2 text-xs">
@@ -228,6 +228,16 @@ export default function RegexTester() {
                 <li className="flex justify-between"><code className="text-sky-400 bg-sky-400/10 px-1 rounded">(?:abc)</code> <span className="text-muted-foreground">Non-capturing</span></li>
                 <li className="flex justify-between"><code className="text-sky-400 bg-sky-400/10 px-1 rounded">(?=abc)</code> <span className="text-muted-foreground">Positive lookahead</span></li>
                 <li className="flex justify-between"><code className="text-sky-400 bg-sky-400/10 px-1 rounded">(?!abc)</code> <span className="text-muted-foreground">Negative lookahead</span></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Flags / Modifiers</h4>
+              <ul className="space-y-2 text-xs">
+                <li className="flex justify-between"><code className="text-purple-400 bg-purple-400/10 px-1 rounded">g</code> <span className="text-muted-foreground">Global</span></li>
+                <li className="flex justify-between"><code className="text-purple-400 bg-purple-400/10 px-1 rounded">i</code> <span className="text-muted-foreground">Case Insensitive</span></li>
+                <li className="flex justify-between"><code className="text-purple-400 bg-purple-400/10 px-1 rounded">m</code> <span className="text-muted-foreground">Multiline</span></li>
+                <li className="flex justify-between"><code className="text-purple-400 bg-purple-400/10 px-1 rounded">s</code> <span className="text-muted-foreground">DotAll (matches \n)</span></li>
+                <li className="flex justify-between"><code className="text-purple-400 bg-purple-400/10 px-1 rounded">u</code> <span className="text-muted-foreground">Unicode</span></li>
               </ul>
             </div>
          </div>
