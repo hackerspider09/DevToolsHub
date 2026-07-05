@@ -31,7 +31,7 @@ export const tools = [
   {
     id: 'yaml-validator',
     slug: 'yaml-validator',
-    title: 'YAML Validator',
+    title: 'YAML Validator & Formatter',
     shortDescription: 'Validate YAML syntax and get detailed parsing statistics.',
     longDescription: 'Paste your YAML to immediately detect syntax errors, line numbers, and structural issues. Also provides parsing statistics like total keys, max depth, and root type.',
     icon: ShieldCheck,
@@ -44,7 +44,7 @@ export const tools = [
   {
     id: 'json-formatter',
     slug: 'json-formatter',
-    title: 'JSON Formatter',
+    title: 'JSON Validator & Formatter',
     shortDescription: 'Format, validate, and minify JSON data.',
     longDescription: 'Easily format and prettify messy JSON strings, or minify them for production. Includes validation to help you catch syntax errors instantly.',
     icon: FileJson,
